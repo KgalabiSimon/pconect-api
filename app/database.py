@@ -14,7 +14,9 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_PORT = os.getenv("DB_PORT", "5432")
 
 # PostgreSQL connection URL
-SQLALCHEMY_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode=require"
+from urllib.parse import quote_plus
+password = quote_plus(DB_PASSWORD) if DB_PASSWORD else ""
+SQLALCHEMY_DATABASE_URL = f"postgresql://{DB_USER}:{password}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode=require"
 
 # Create SQLAlchemy engine
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
