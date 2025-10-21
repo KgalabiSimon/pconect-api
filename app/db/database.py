@@ -1,38 +1,40 @@
-from sqlalchemy import create_engine
+# app/db/database.py
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
-from urllib.parse import quote_plus
 from dotenv import load_dotenv
 import os
-
+import psycopg2
+# Load environment variables
 load_dotenv()
 
-def require(var):
-    v = os.getenv(var)
-    if not v:
-        raise RuntimeError(f"Missing env var: {var}")
-    return v.strip()
-
-DB_HOST = require("DB_HOST")          # e.g. myserver.postgres.database.azure.com
-DB_NAME = require("DB_NAME")          # e.g. pconnect
-DB_USER = require("DB_USER")          # Flexible: appuser | Single: appuser@myserver
-DB_PASSWORD = require("DB_PASSWORD")
+# Get database configuration
+DB_HOST = os.getenv("DB_HOST")
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_PORT = os.getenv("DB_PORT", "5432")
 
-password = quote_plus(DB_PASSWORD)
-# Use the plain username without Azure server suffix
-# sslmode=require is needed for Azure
-SQLALCHEMY_DATABASE_URL = (
-    f"postgresql://{DB_USER}:{password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
+Base = declarative_base()
 
-# Configure SSL and other connection parameters
+def _connect():
+    return psycopg2.connect(
+        host=DB_HOST,
+        database=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        port=DB_PORT,
+        sslmode='require',
+        connect_timeout=10
+    )
+
+# 3) Engine from creator (DO NOT pass psycopg2.connect into create_engine)
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
+    "postgresql+psycopg2://",   # empty DSN on purpose
+    creator=_connect,
     pool_pre_ping=True,
-    connect_args={
-        "sslmode": "require",
-        "host": DB_HOST  # Explicitly set the host
-    }
+    pool_size=5,
+    max_overflow=5,
+    pool_recycle=300,           # avoid long-held sockets
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -44,3 +46,5 @@ def get_db():
         yield db
     finally:
         db.close()
+
+

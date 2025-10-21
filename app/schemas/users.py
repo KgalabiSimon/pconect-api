@@ -25,16 +25,17 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
     role: Optional[str] = None
 
+
 class UserProfile(UserBase):
-    id: int
+    id: str  # changed from int to str
     created_at: datetime
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True  # for Pydantic v2
 
 class UserResponse(UserProfile):
-    role: str
+    pass  # removed role, as it's not present in User model
 
 class UserProfileUpdate(BaseModel):
     first_name: Optional[str] = None

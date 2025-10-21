@@ -8,6 +8,53 @@ from app.db.database import get_db
 from app.db.models import User, AdminUser, SecurityOfficer
 from app.schemas.auth import Token, AdminLogin, SecurityLogin, UserLogin, PasswordResetRequest
 from app.schemas.users import UserCreate, UserResponse
+from app.schemas.admin import AdminCreate
+
+router = APIRouter(prefix="/api/v1/auth")
+
+
+
+
+# Admin registration endpoint
+@router.post("/admin/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def register_admin(admin_data: AdminCreate, db: Session = Depends(get_db)):
+    """Register a new admin user (admin creation)"""
+
+    # Check if email already exists
+    existing_admin = db.query(AdminUser).filter(AdminUser.email == admin_data.email).first()
+    if existing_admin:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered as admin"
+        )
+
+    # Generate admin ID
+    last_admin = db.query(AdminUser).order_by(AdminUser.id.desc()).first()
+    if last_admin:
+        last_num = int(last_admin.id.split("-")[1])
+        admin_id = generate_id("ADM", last_num + 1)
+    else:
+        admin_id = generate_id("ADM", 1)
+
+    # Create new admin
+    hashed_password = get_password_hash(admin_data.password)
+
+    new_admin = AdminUser(
+        id=admin_id,
+        email=admin_data.email,
+        hashed_password=hashed_password,
+        first_name=admin_data.first_name,
+        last_name=admin_data.last_name,
+        role=admin_data.role,
+        is_active=admin_data.is_active
+    )
+
+    db.add(new_admin)
+    db.commit()
+    db.refresh(new_admin)
+
+    # Return as UserResponse for consistency (id, email, etc.)
+    return new_admin
 from app.core.security import (
     verify_password,
     get_password_hash,
