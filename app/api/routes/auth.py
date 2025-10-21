@@ -1,0 +1,280 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
+from datetime import timedelta
+from typing import Optional
+
+from app.db.database import get_db
+from app.db.models import User, AdminUser, SecurityOfficer
+from app.schemas.auth import Token, AdminLogin, SecurityLogin, UserLogin, PasswordResetRequest
+from app.schemas.users import UserCreate, UserResponse
+from app.core.security import (
+    verify_password,
+    get_password_hash,
+    create_access_token,
+    decode_access_token,
+    generate_id,
+    is_admin
+)
+from app.core.config import settings
+
+router = APIRouter(prefix="/api/v1/auth")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
+
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+) -> User:
+    """Get current authenticated user from JWT token"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    payload = decode_access_token(token)
+    if payload is None:
+        raise credentials_exception
+
+    user_id: str = payload.get("sub")
+    if user_id is None:
+        raise credentials_exception
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise credentials_exception
+
+    return user
+
+
+async def get_current_admin(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+) -> AdminUser:
+    """Get current authenticated admin from JWT token"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    payload = decode_access_token(token)
+    if payload is None:
+        raise credentials_exception
+
+    # Check if role is admin
+    if not is_admin(payload):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+
+    admin_id: str = payload.get("sub")
+    if admin_id is None:
+        raise credentials_exception
+
+    admin = db.query(AdminUser).filter(AdminUser.id == admin_id).first()
+    if admin is None:
+        raise credentials_exception
+
+    return admin
+
+
+async def get_token_payload(token: str = Depends(oauth2_scheme)) -> dict:
+    """Get token payload without database query"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    payload = decode_access_token(token)
+    if payload is None:
+        raise credentials_exception
+
+    return payload
+
+
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
+    """Register a new user (self-registration)"""
+
+    # Check if email already exists
+    existing_user = db.query(User).filter(User.email == user_data.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+
+    # Generate user ID
+    last_user = db.query(User).order_by(User.id.desc()).first()
+    if last_user:
+        last_num = int(last_user.id.split("-")[1])
+        user_id = generate_id("USR", last_num + 1)
+    else:
+        user_id = generate_id("USR", 1)
+
+    # Create new user
+    hashed_password = get_password_hash(user_data.password)
+
+    new_user = User(
+        id=user_id,
+        email=user_data.email,
+        hashed_password=hashed_password,
+        first_name=user_data.first_name,
+        last_name=user_data.last_name,
+        phone=user_data.phone,
+        building_id=user_data.building_id,
+        programme=user_data.programme,
+        laptop_model=user_data.laptop_model,
+        laptop_asset_number=user_data.laptop_asset_number,
+        photo_url=user_data.photo_url
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
+
+
+@router.post("/login", response_model=Token)
+async def login_user(user_data: UserLogin, db: Session = Depends(get_db)):
+    """Login user with email/password and return JWT token"""
+
+    # Find user by email
+    user = db.query(User).filter(User.email == user_data.email).first()
+
+    if not user or not verify_password(user_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive"
+        )
+
+    # Create access token
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.id, "email": user.email, "role": "user"},
+        expires_delta=access_token_expires
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "building_id": user.building_id,
+            "programme": user.programme,
+            "photo_url": user.photo_url
+        }
+    }
+
+
+@router.post("/admin/login", response_model=Token)
+async def login_admin(admin_data: AdminLogin, db: Session = Depends(get_db)):
+    """Admin login"""
+
+    admin = db.query(AdminUser).filter(AdminUser.email == admin_data.email).first()
+
+    if not admin or not verify_password(admin_data.password, admin.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password"
+        )
+
+    if not admin.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin account is inactive"
+        )
+
+    # Create access token
+    access_token = create_access_token(
+        data={"sub": admin.id, "email": admin.email, "role": admin.role}
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": admin.id,
+            "email": admin.email,
+            "first_name": admin.first_name,
+            "last_name": admin.last_name,
+            "role": admin.role
+        }
+    }
+
+
+@router.post("/security/login", response_model=Token)
+async def login_security(security_data: SecurityLogin, db: Session = Depends(get_db)):
+    """Security officer login"""
+
+    officer = db.query(SecurityOfficer).filter(
+        SecurityOfficer.badge_number == security_data.badge_number
+    ).first()
+
+    if not officer or not verify_password(security_data.pin, officer.hashed_pin):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect badge number or PIN"
+        )
+
+    if not officer.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Security officer account is inactive"
+        )
+
+    # Create access token
+    access_token = create_access_token(
+        data={"sub": officer.id, "badge": officer.badge_number, "role": "security"}
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": officer.id,
+            "badge_number": officer.badge_number,
+            "first_name": officer.first_name,
+            "last_name": officer.last_name
+        }
+    }
+
+
+@router.post("/password-reset/request")
+async def request_password_reset(
+    reset_request: PasswordResetRequest,
+    db: Session = Depends(get_db)
+):
+    """Request password reset (sends email in production)"""
+
+    user = db.query(User).filter(User.email == reset_request.email).first()
+
+    if not user:
+        # Don't reveal if email exists or not
+        return {"message": "If the email exists, a password reset link has been sent"}
+
+    # In production, generate reset token and send email
+    # For now, just return success message
+
+    return {"message": "Password reset link has been sent to your email"}
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_info(current_user: User = Depends(get_current_user)):
+    """Get current authenticated user profile"""
+    return current_user
