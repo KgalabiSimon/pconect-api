@@ -31,8 +31,10 @@ async def health_check():
 async def test_db(db: Session = Depends(get_db)):
     """Test database connection"""
     try:
-        # Try to execute a simple query
-        db.execute("SELECT 1")
+        from sqlalchemy import text
+        # Try to execute a simple query using proper SQLAlchemy text()
+        result = db.execute(text("SELECT 1"))
+        result.scalar()  # Actually fetch the result
         return {"status": "Database connection successful"}
     except Exception as e:
         return {"status": "Database connection failed", "error": str(e)}
