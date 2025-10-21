@@ -1,17 +1,34 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
+from app.api.routes import auth, users, profile
 from sqlalchemy.orm import Session
-from app.database import get_db, engine, Base
+from app.core.database import get_db
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+app = FastAPI(
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
+    description="P-Connect API - Employee and Visitor Management System"
+)
 
-app = FastAPI(title="FastAPI Starter", version="1.0.0")
+# Include routers with tags
+app.include_router(
+    auth.router,
+    tags=["Authentication"]
+)
+app.include_router(
+    users.router,
+    tags=["Users"]
+)
+app.include_router(
+    profile.router,
+    tags=["Profile"]
+)
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -19,13 +36,15 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    """Hello World endpoint"""
-    return {"message": "Hello World"}
+    return {
+        "message": "Welcome to P-Connect API",
+        "version": settings.APP_VERSION,
+        "docs": "/docs"
+    }
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy"}
+    return {"status": "healthy", "version": settings.APP_VERSION}
 
 @app.get("/db-test")
 async def test_db(db: Session = Depends(get_db)):
