@@ -1,33 +1,39 @@
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
+from urllib.parse import quote_plus
 from dotenv import load_dotenv
-import os
+import os, sys
 
 load_dotenv()
 
-# Get database configuration from environment variables
-DB_HOST = os.getenv("DB_HOST")
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
+def require(var):
+    v = os.getenv(var)
+    if not v:
+        raise RuntimeError(f"Missing env var: {var}")
+    return v
+
+DB_HOST = require("DB_HOST")          # e.g. myserver.postgres.database.azure.com
+DB_NAME = require("DB_NAME")          # e.g. pconnect
+DB_USER = require("DB_USER")          # Flexible: appuser | Single: appuser@myserver
+DB_PASSWORD = require("DB_PASSWORD")
 DB_PORT = os.getenv("DB_PORT", "5432")
 
-# PostgreSQL connection URL
-from urllib.parse import quote_plus
-password = quote_plus(DB_PASSWORD) if DB_PASSWORD else ""
-SQLALCHEMY_DATABASE_URL = f"postgresql://{DB_USER}:{password}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode=require"
+password = quote_plus(DB_PASSWORD)
+# sslmode=require is needed for Azure
+SQLALCHEMY_DATABASE_URL = (
+    f"postgresql://{DB_USER}:{password}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode=require"
+)
 
-# Create SQLAlchemy engine
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+# If you still get SSL issues, you can also pass connect_args
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    pool_pre_ping=True,
+    connect_args={"sslmode": "require"},  # psycopg2 understands this
+)
 
-# SessionLocal class for database sessions
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Base class for database models
 Base = declarative_base()
 
-# Dependency to get database session
 def get_db():
     db = SessionLocal()
     try:
