@@ -3,14 +3,53 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from typing import Optional
-
 from app.db.database import get_db
 from app.db.models import User, AdminUser, SecurityOfficer
 from app.schemas.auth import Token, AdminLogin, SecurityLogin, UserLogin, PasswordResetRequest
 from app.schemas.users import UserCreate, UserResponse
 from app.schemas.admin import AdminCreate
+from app.schemas.security import SecurityRegister
 
 router = APIRouter(prefix="/api/v1/auth")
+
+# Security officer registration endpoint
+@router.post("/security/register", status_code=status.HTTP_201_CREATED)
+async def register_security_officer(officer_data: SecurityRegister, db: Session = Depends(get_db)):
+    """Register a new security officer"""
+    # Check if badge number already exists
+    existing = db.query(SecurityOfficer).filter(SecurityOfficer.badge_number == officer_data.badge_number).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Badge number already registered")
+
+    # Generate security officer ID
+    last_officer = db.query(SecurityOfficer).order_by(SecurityOfficer.id.desc()).first()
+    if last_officer:
+        last_num = int(last_officer.id.split("-")[1])
+        officer_id = f"SEC-{last_num + 1:03d}"
+    else:
+        officer_id = "SEC-001"
+
+    from app.core.security import get_password_hash
+    hashed_pin = get_password_hash(officer_data.pin)
+
+    new_officer = SecurityOfficer(
+        id=officer_id,
+        badge_number=officer_data.badge_number,
+        hashed_pin=hashed_pin,
+        first_name=officer_data.first_name,
+        last_name=officer_data.last_name,
+        is_active=officer_data.is_active
+    )
+    db.add(new_officer)
+    db.commit()
+    db.refresh(new_officer)
+    return {
+        "id": new_officer.id,
+        "badge_number": new_officer.badge_number,
+        "first_name": new_officer.first_name,
+        "last_name": new_officer.last_name,
+        "is_active": new_officer.is_active
+    }
 
 
 
@@ -64,8 +103,6 @@ from app.core.security import (
     is_admin
 )
 from app.core.config import settings
-
-router = APIRouter(prefix="/api/v1/auth")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
 
