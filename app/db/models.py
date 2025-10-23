@@ -34,6 +34,15 @@ class CheckInStatus(str, enum.Enum):
 
 
 # Models
+
+# New Programme model
+class Programme(Base):
+    __tablename__ = "programmes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), unique=True, nullable=False)
+
+
 class User(Base):
     """Employee/User model"""
     __tablename__ = "users"
@@ -45,7 +54,7 @@ class User(Base):
     last_name = Column(String(100), nullable=False)
     phone = Column(String(20))
     building_id = Column(UUID(as_uuid=True), ForeignKey("buildings.id", ondelete="SET NULL"), nullable=True)
-    programme = Column(String(100))  # Programme 1A, 1B, etc.
+    programme_id = Column(UUID(as_uuid=True), ForeignKey("programmes.id", ondelete="SET NULL"), nullable=True)
     laptop_model = Column(String(200))
     laptop_asset_number = Column(String(100))
     photo_url = Column(String(500))
@@ -55,6 +64,7 @@ class User(Base):
 
     # Relationships
     building = relationship("Building")
+    programme = relationship("Programme")
     check_ins = relationship("CheckIn", back_populates="user")
     bookings = relationship("Booking", back_populates="user")
     laptop_records = relationship("LaptopRecord", back_populates="user")
@@ -143,6 +153,8 @@ class Floor(Base):
 
     # Relationships
     building = relationship("Building", back_populates="floors")
+
+
 
 
 

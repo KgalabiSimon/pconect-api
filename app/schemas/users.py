@@ -13,7 +13,7 @@ class UserBase(BaseModel):
     laptop_asset_number: Optional[str] = None
     photo_url: Optional[str] = None
     is_active: bool = True
-    programme: Optional[str] = None
+    programme_id: Optional[UUID] = None
 
 class UserCreate(UserBase):
     password: str

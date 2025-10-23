@@ -1,3 +1,4 @@
+from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -16,7 +17,7 @@ async def get_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, le=1000),
     building_id: Optional[str] = None,
-    programme: Optional[str] = None,
+    programme_id: Optional[UUID] = Query(None),
     search: Optional[str] = None,
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin)
@@ -28,8 +29,8 @@ async def get_users(
     if building_id:
         query = query.filter(User.building_id == building_id)
 
-    if programme:
-        query = query.filter(User.programme == programme)
+    if programme_id:
+        query = query.filter(User.programme_id == programme_id)
 
     if search:
         search_term = f"%{search}%"
@@ -79,7 +80,7 @@ async def create_user(
         last_name=user_data.last_name,
         phone=user_data.phone,
         building_id=user_data.building_id,
-        programme=user_data.programme,
+        programme_id=user_data.programme_id,
         laptop_model=user_data.laptop_model,
         laptop_asset_number=user_data.laptop_asset_number,
         photo_url=user_data.photo_url
