@@ -8,7 +8,7 @@ from app.schemas.users import UserResponse, UserUpdate, UserProfileUpdate, UserC
 from app.api.routes.auth import get_current_user, get_current_admin, get_token_payload
 from app.core.security import get_password_hash, generate_id, can_access_user, can_modify_user
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/users")
 
 
 @router.get("/", response_model=List[UserResponse])

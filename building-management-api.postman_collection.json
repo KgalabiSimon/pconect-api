@@ -1,0 +1,286 @@
+{
+  "info": {
+    "_postman_id": "bldg-api-collection-001",
+    "name": "Building Management API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Building",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"building_code\": \"BLD-001\",\n  \"name\": \"Building 41\",\n  \"address\": \"123 Innovation Drive, Pretoria\",\n  \"floors_count\": 3,\n  \"blocks_count\": 9\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/v1/buildings/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "v1", "buildings", ""]
+        }
+      }
+    },
+    {
+      "name": "List Buildings",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8000/api/v1/buildings/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "v1", "buildings", ""]
+        }
+      }
+    },
+    {
+      "name": "Get Building by ID",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8000/api/v1/buildings/:building_id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "v1", "buildings", ":building_id"]
+        }
+      }
+    },
+    {
+      "name": "Update Building",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"New Name\",\n  \"address\": \"New Address\",\n  \"floors_count\": 4,\n  \"blocks_count\": 10\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/v1/buildings/:building_id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "v1", "buildings", ":building_id"]
+        }
+      }
+    },
+    {
+      "name": "Delete Building",
+      "request": {
+        "method": "DELETE",
+        "url": {
+          "raw": "http://localhost:8000/api/v1/buildings/:building_id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "v1", "buildings", ":building_id"]
+        }
+      }
+    },
+    {
+      "name": "Create Space",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"DESK\",\n  \"quantity\": 10\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/v1/buildings/:building_id/spaces",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "v1", "buildings", ":building_id", "spaces"]
+        }
+      }
+    },
+    {
+      "name": "List Spaces",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8000/api/v1/buildings/:building_id/spaces",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "v1", "buildings", ":building_id", "spaces"]
+        }
+      }
+    },
+    {
+      "name": "Update Space",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"quantity\": 12\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/v1/buildings/spaces/:space_id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "v1", "buildings", "spaces", ":space_id"]
+        }
+      }
+    },
+    {
+      "name": "Delete Space",
+      "request": {
+        "method": "DELETE",
+        "url": {
+          "raw": "http://localhost:8000/api/v1/buildings/spaces/:space_id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "v1", "buildings", "spaces", ":space_id"]
+        }
+      }
+    },
+    {
+      "name": "Create Floor",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"floor_index\": 1\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/v1/buildings/:building_id/floors",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "v1", "buildings", ":building_id", "floors"]
+        }
+      }
+    },
+    {
+      "name": "List Floors",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8000/api/v1/buildings/:building_id/floors",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "v1", "buildings", ":building_id", "floors"]
+        }
+      }
+    },
+    {
+      "name": "Update Floor",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"floor_index\": 2\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/v1/buildings/floors/:floor_id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "v1", "buildings", "floors", ":floor_id"]
+        }
+      }
+    },
+    {
+      "name": "Delete Floor",
+      "request": {
+        "method": "DELETE",
+        "url": {
+          "raw": "http://localhost:8000/api/v1/buildings/floors/:floor_id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "v1", "buildings", "floors", ":floor_id"]
+        }
+      }
+    },
+    {
+      "name": "Create Block",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"block_label\": \"A\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/v1/buildings/:building_id/blocks",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "v1", "buildings", ":building_id", "blocks"]
+        }
+      }
+    },
+    {
+      "name": "List Blocks",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8000/api/v1/buildings/:building_id/blocks",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "v1", "buildings", ":building_id", "blocks"]
+        }
+      }
+    },
+    {
+      "name": "Update Block",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"block_label\": \"B\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/v1/buildings/blocks/:block_id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "v1", "buildings", "blocks", ":block_id"]
+        }
+      }
+    },
+    {
+      "name": "Delete Block",
+      "request": {
+        "method": "DELETE",
+        "url": {
+          "raw": "http://localhost:8000/api/v1/buildings/blocks/:block_id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "v1", "buildings", "blocks", ":block_id"]
+        }
+      }
+    }
+  ]
+}
