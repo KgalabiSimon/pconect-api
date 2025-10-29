@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.routes import auth, users, profile
-from app.api.routes import building
+from app.api.routes import building, programme
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 
@@ -31,6 +31,12 @@ app.include_router(
 app.include_router(
     building.router,
     tags=["Buildings"]
+)
+
+# Register programme router
+app.include_router(
+    programme.router,
+    tags=["Programmes"]
 )
 
 # Configure CORS
