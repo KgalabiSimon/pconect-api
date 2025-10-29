@@ -6,6 +6,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
 from app.db.database import Base
+from sqlalchemy import UniqueConstraint
 
 
 # Enums
@@ -29,6 +30,7 @@ class BookingStatus(str, enum.Enum):
 
 
 class CheckInStatus(str, enum.Enum):
+    PENDING = "pending"
     CHECKED_IN = "checked_in"
     CHECKED_OUT = "checked_out"
 
@@ -179,7 +181,7 @@ class Block(Base):
 
 
 # New Space model
-from sqlalchemy import UniqueConstraint
+
 class Space(Base):
     __tablename__ = "spaces"
 
@@ -263,7 +265,7 @@ class CheckIn(Base):
     check_out_time = Column(DateTime(timezone=True), nullable=True)
     duration_minutes = Column(Integer, nullable=True)
 
-    status = Column(SQLEnum(CheckInStatus), default=CheckInStatus.CHECKED_IN)
+    status = Column(SQLEnum(CheckInStatus), default=CheckInStatus.PENDING)
 
     # QR code data
     qr_code_data = Column(String(500))
