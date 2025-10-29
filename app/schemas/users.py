@@ -8,6 +8,7 @@ class UserBase(BaseModel):
     first_name: str
     last_name: str
     phone: Optional[str] = None
+    
     building_id: Optional[UUID] = None
     laptop_model: Optional[str] = None
     laptop_asset_number: Optional[str] = None

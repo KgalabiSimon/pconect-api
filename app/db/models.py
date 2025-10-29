@@ -267,6 +267,7 @@ class CheckIn(Base):
 
     # QR code data
     qr_code_data = Column(String(500))
+    expires_at = Column(DateTime(timezone=True), nullable=True)  # QR code expiry
 
     # Relationships
     user = relationship("User", back_populates="check_ins")
@@ -285,9 +286,6 @@ class LaptopRecord(Base):
     registered_laptop = Column(String(200))
     registered_asset_number = Column(String(100))
 
-    # Actually checked in with
-    checked_in_laptop = Column(String(200))
-    checked_in_asset_number = Column(String(100))
 
     # Match status
     is_match = Column(Boolean, default=True)

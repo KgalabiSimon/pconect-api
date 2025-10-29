@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 from typing import Optional
 from app.db.database import get_db
-from app.db.models import User, AdminUser, SecurityOfficer
+from app.db.models import User, AdminUser, SecurityOfficer, LaptopRecord
 from app.schemas.auth import Token, AdminLogin, SecurityLogin, UserLogin, PasswordResetRequest
 from app.schemas.users import UserCreate, UserResponse
 from app.schemas.admin import AdminCreate
@@ -209,6 +209,8 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+
 
     from app.schemas.users import UserResponse
     return UserResponse.from_orm(new_user)
