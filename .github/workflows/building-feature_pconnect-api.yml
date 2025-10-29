@@ -63,4 +63,4 @@ jobs:
         with:
           app-name: 'pconnect-api'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_6F1875AD13114B2DBE24DBC887BE1C3F }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_A92E1E60FC564077AF7B1C7204B09BA1 }}
