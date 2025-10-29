@@ -1,4 +1,7 @@
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, Text, Float, Enum as SQLEnum
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, Text, Float, Enum as SQLEnum, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Time, CheckConstraint
+import uuid
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -11,10 +14,12 @@ class UserType(str, enum.Enum):
     VISITOR = "visitor"
 
 
+
+# New SpaceType Enum
 class SpaceType(str, enum.Enum):
-    DESK = "desk"
-    OFFICE = "office"
-    MEETING_ROOM = "meeting_room"
+    DESK = "DESK"
+    OFFICE = "OFFICE"
+    ROOM = "ROOM"
 
 
 class BookingStatus(str, enum.Enum):
@@ -29,27 +34,37 @@ class CheckInStatus(str, enum.Enum):
 
 
 # Models
+
+# New Programme model
+class Programme(Base):
+    __tablename__ = "programmes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), unique=True, nullable=False)
+
+
 class User(Base):
     """Employee/User model"""
     __tablename__ = "users"
 
-    id = Column(String(50), primary_key=True, index=True)  # USR-001
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
     phone = Column(String(20))
-    building_id = Column(String(50), ForeignKey("buildings.id"))
-    programme = Column(String(100))  # Programme 1A, 1B, etc.
+    building_id = Column(UUID(as_uuid=True), ForeignKey("buildings.id", ondelete="SET NULL"), nullable=True)
+    programme_id = Column(UUID(as_uuid=True), ForeignKey("programmes.id", ondelete="SET NULL"), nullable=True)
     laptop_model = Column(String(200))
     laptop_asset_number = Column(String(100))
     photo_url = Column(String(500))
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    building = relationship("Building", back_populates="users")
+    building = relationship("Building")
+    programme = relationship("Programme")
     check_ins = relationship("CheckIn", back_populates="user")
     bookings = relationship("Booking", back_populates="user")
     laptop_records = relationship("LaptopRecord", back_populates="user")
@@ -59,7 +74,7 @@ class Visitor(Base):
     """Visitor model"""
     __tablename__ = "visitors"
 
-    id = Column(String(50), primary_key=True, index=True)  # VIS-000001
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
     company = Column(String(200))
@@ -69,12 +84,12 @@ class Visitor(Base):
 
     # Visit details
     purpose = Column(String(20))  # EmployeeVisit or Other
-    host_employee_id = Column(String(50), ForeignKey("users.id"))
+    host_employee_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     host_employee_name = Column(String(200))
     other_reason = Column(String(500))
 
     # Location
-    building_id = Column(String(50), ForeignKey("buildings.id"))
+    building_id = Column(UUID(as_uuid=True), ForeignKey("buildings.id", ondelete="SET NULL"), nullable=True)
     floor = Column(String(50))
     block = Column(String(50))
 
@@ -84,7 +99,7 @@ class Visitor(Base):
 
     # Metadata
     device_id = Column(String(100))  # Kiosk device
-    registered_at = Column(DateTime, default=datetime.utcnow)
+    registered_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     # Relationships
     host = relationship("User", foreign_keys=[host_employee_id])
@@ -92,96 +107,109 @@ class Visitor(Base):
     check_ins = relationship("CheckIn", back_populates="visitor")
 
 
+
+# New Building model
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
+
 class Building(Base):
-    """Building model"""
     __tablename__ = "buildings"
 
-    id = Column(String(50), primary_key=True, index=True)  # BLDG-001
-    name = Column(String(100), nullable=False)  # Building 41
-    address = Column(String(500))
-    total_floors = Column(Integer, default=1)
-    total_blocks = Column(Integer, default=1)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    building_code = Column(String, unique=True, nullable=False, index=True)  # e.g., BLD-001
+    name = Column(String, nullable=False)  # e.g., Building 41
+    address = Column(String, nullable=False)  # e.g., 123 Innovation Drive, Pretoria
+    floors_count = Column(Integer, nullable=False)  # Required, >= 0
+    blocks_count = Column(Integer, nullable=False)  # Required, >= 0
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    users = relationship("User", back_populates="building")
+    spaces = relationship("Space", back_populates="building", cascade="all, delete-orphan")
     floors = relationship("Floor", back_populates="building", cascade="all, delete-orphan")
-    spaces = relationship("Space", back_populates="building")
+    blocks = relationship("Block", back_populates="building", cascade="all, delete-orphan")
+
+    # total_spaces is computed property (read-only, not a DB column)
+    @property
+    def total_spaces(self):
+        return sum(space.quantity for space in self.spaces) if self.spaces else 0
 
 
+
+# New Floor model
 class Floor(Base):
-    """Floor model - custom floor names"""
     __tablename__ = "floors"
 
-    id = Column(String(50), primary_key=True, index=True)  # FLR-001
-    building_id = Column(String(50), ForeignKey("buildings.id"), nullable=False)
-    name = Column(String(100), nullable=False)  # Ground Floor, First Floor, etc.
-    order = Column(Integer, default=0)  # For sorting
-    created_at = Column(DateTime, default=datetime.utcnow)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    building_id = Column(UUID(as_uuid=True), ForeignKey("buildings.id", ondelete="CASCADE"), nullable=False)
+    floor_index = Column(Integer, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Unique constraint: (building_id, floor_index)
+    __table_args__ = (
+        UniqueConstraint('building_id', 'floor_index', name='uq_building_floor_index'),
+    )
 
     # Relationships
     building = relationship("Building", back_populates="floors")
-    blocks = relationship("Block", back_populates="floor", cascade="all, delete-orphan")
 
 
+
+
+
+# New Block model
 class Block(Base):
-    """Block model - custom block names per floor"""
     __tablename__ = "blocks"
 
-    id = Column(String(50), primary_key=True, index=True)  # BLK-001
-    floor_id = Column(String(50), ForeignKey("floors.id"), nullable=False)
-    name = Column(String(100), nullable=False)  # Block A, North Wing, etc.
-    created_at = Column(DateTime, default=datetime.utcnow)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    building_id = Column(UUID(as_uuid=True), ForeignKey("buildings.id", ondelete="CASCADE"), nullable=False)
+    block_label = Column(String(20), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Unique constraint: (building_id, block_label)
+    __table_args__ = (
+        UniqueConstraint('building_id', 'block_label', name='uq_building_block_label'),
+    )
 
     # Relationships
-    floor = relationship("Floor", back_populates="blocks")
+    building = relationship("Building", back_populates="blocks")
 
 
+
+# New Space model
+from sqlalchemy import UniqueConstraint
 class Space(Base):
-    """Space model - Desks, Offices, Meeting Rooms"""
     __tablename__ = "spaces"
 
-    id = Column(String(50), primary_key=True, index=True)  # SPC-001
-    name = Column(String(200), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    building_id = Column(UUID(as_uuid=True), ForeignKey("buildings.id", ondelete="CASCADE"), nullable=False)
     type = Column(SQLEnum(SpaceType), nullable=False)
-    building_id = Column(String(50), ForeignKey("buildings.id"), nullable=False)
-    floor = Column(String(100))
-    block = Column(String(100))
-    capacity = Column(Integer, default=1)
-    description = Column(Text)
-    image_url = Column(String(500))
+    quantity = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Amenities (stored as JSON-like string or separate table)
-    has_wifi = Column(Boolean, default=False)
-    has_monitor = Column(Boolean, default=False)
-    has_coffee = Column(Boolean, default=False)
-    has_video_conf = Column(Boolean, default=False)
-    has_projector = Column(Boolean, default=False)
-    has_whiteboard = Column(Boolean, default=False)
-    has_power = Column(Boolean, default=False)
-    has_standing_desk = Column(Boolean, default=False)
-    has_conference_phone = Column(Boolean, default=False)
-
-    is_available = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    # Unique constraint: (building_id, type)
+    __table_args__ = (
+        UniqueConstraint('building_id', 'type', name='uq_building_space_type'),
+    )
 
     # Relationships
     building = relationship("Building", back_populates="spaces")
-    bookings = relationship("Booking", back_populates="space")
 
 
 class Booking(Base):
     """Booking model"""
     __tablename__ = "bookings"
 
-    id = Column(String(50), primary_key=True, index=True)  # BK-001
-    user_id = Column(String(50), ForeignKey("users.id"), nullable=False)
-    space_id = Column(String(50), ForeignKey("spaces.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    space_id = Column(UUID(as_uuid=True), ForeignKey("spaces.id", ondelete="CASCADE"), nullable=False)
 
-    booking_date = Column(DateTime, nullable=False)
-    start_time = Column(String(10))  # "09:00"
-    end_time = Column(String(10))    # "17:00"
+    booking_date = Column(DateTime(timezone=True), nullable=False)
+    start_time = Column(Time(timezone=True), nullable=False)
+    end_time = Column(Time(timezone=True), nullable=False)
 
     status = Column(SQLEnum(BookingStatus), default=BookingStatus.CONFIRMED)
 
@@ -192,37 +220,47 @@ class Booking(Base):
     # QR code
     qr_code_url = Column(String(500))
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    __table_args__ = (
+        CheckConstraint('start_time < end_time', name='ck_booking_start_before_end'),
+    )
 
     # Relationships
     user = relationship("User", back_populates="bookings")
-    space = relationship("Space", back_populates="bookings")
 
 
 class CheckIn(Base):
     """Check-in/Check-out records"""
     __tablename__ = "checkins"
 
-    id = Column(String(50), primary_key=True, index=True)  # CHK-001
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     # Can be either user or visitor
-    user_id = Column(String(50), ForeignKey("users.id"), nullable=True)
-    visitor_id = Column(String(50), ForeignKey("visitors.id"), nullable=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    visitor_id = Column(UUID(as_uuid=True), ForeignKey("visitors.id", ondelete="SET NULL"), nullable=True)
     user_type = Column(SQLEnum(UserType), nullable=False)
 
     # Location
-    building_id = Column(String(50), ForeignKey("buildings.id"))
+    building_id = Column(UUID(as_uuid=True), ForeignKey("buildings.id", ondelete="SET NULL"), nullable=True)
     floor = Column(String(100))
     block = Column(String(100))
+
+    __table_args__ = (
+        # Enforce exactly one of user_id or visitor_id is set (XOR)
+        CheckConstraint(
+            '((user_id IS NOT NULL)::integer + (visitor_id IS NOT NULL)::integer) = 1',
+            name='ck_checkin_user_xor_visitor'
+        ),
+    )
 
     # Laptop info (for employees)
     laptop_model = Column(String(200))
     laptop_asset_number = Column(String(100))
 
     # Time tracking
-    check_in_time = Column(DateTime, nullable=False, default=datetime.utcnow)
-    check_out_time = Column(DateTime, nullable=True)
+    check_in_time = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    check_out_time = Column(DateTime(timezone=True), nullable=True)
     duration_minutes = Column(Integer, nullable=True)
 
     status = Column(SQLEnum(CheckInStatus), default=CheckInStatus.CHECKED_IN)
@@ -240,8 +278,8 @@ class LaptopRecord(Base):
     """Laptop tracking records"""
     __tablename__ = "laptop_records"
 
-    id = Column(String(50), primary_key=True, index=True)  # LAP-001
-    user_id = Column(String(50), ForeignKey("users.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
     # Registered laptop (from user profile)
     registered_laptop = Column(String(200))
@@ -255,15 +293,15 @@ class LaptopRecord(Base):
     is_match = Column(Boolean, default=True)
 
     # Location
-    building_id = Column(String(50), ForeignKey("buildings.id"))
+    building_id = Column(UUID(as_uuid=True), ForeignKey("buildings.id", ondelete="SET NULL"), nullable=True)
     floor = Column(String(100))
     block = Column(String(100))
 
     # Time tracking
-    check_in_date = Column(DateTime, nullable=False)
-    check_in_time = Column(String(10))
-    check_out_date = Column(DateTime, nullable=True)
-    check_out_time = Column(String(10), nullable=True)
+    check_in_date = Column(DateTime(timezone=True), nullable=False)
+    check_in_time = Column(Time(timezone=True), nullable=True)
+    check_out_date = Column(DateTime(timezone=True), nullable=True)
+    check_out_time = Column(Time(timezone=True), nullable=True)
     duration = Column(String(50), nullable=True)
 
     # Security verification
@@ -271,7 +309,7 @@ class LaptopRecord(Base):
     officer_badge = Column(String(50))
 
     status = Column(SQLEnum(CheckInStatus), default=CheckInStatus.CHECKED_IN)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     # Relationships
     user = relationship("User", back_populates="laptop_records")
@@ -282,25 +320,25 @@ class SecurityOfficer(Base):
     """Security officer model"""
     __tablename__ = "security_officers"
 
-    id = Column(String(50), primary_key=True, index=True)  # SEC-001
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     badge_number = Column(String(50), unique=True, nullable=False)
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
     hashed_pin = Column(String(255), nullable=False)  # 6-digit PIN hashed
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
 
 class AdminUser(Base):
     """Admin user model"""
     __tablename__ = "admin_users"
 
-    id = Column(String(50), primary_key=True, index=True)  # ADM-001
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
     role = Column(String(50), default="admin")  # admin, super_admin, viewer
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)

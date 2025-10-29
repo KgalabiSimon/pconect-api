@@ -2,8 +2,9 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.routes import auth, users, profile
+from app.api.routes import building, programme
 from sqlalchemy.orm import Session
-from app.core.database import get_db
+from app.db.database import get_db
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -20,9 +21,22 @@ app.include_router(
     users.router,
     tags=["Users"]
 )
+
 app.include_router(
     profile.router,
     tags=["Profile"]
+)
+
+# Register building management router
+app.include_router(
+    building.router,
+    tags=["Buildings"]
+)
+
+# Register programme router
+app.include_router(
+    programme.router,
+    tags=["Programmes"]
 )
 
 # Configure CORS

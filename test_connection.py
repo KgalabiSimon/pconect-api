@@ -41,7 +41,7 @@ except socket.gaierror as e:
 print("\nDatabase Connection Test:")
 try:
     print("Attempting database connection...")
-    connection = psycopg2.connect(
+    conn = psycopg2.connect(
         host=DB_HOST,
         database=DB_NAME,
         user=DB_USER,
@@ -51,7 +51,7 @@ try:
         connect_timeout=10
     )
     
-    cursor = connection.cursor()
+    cursor = conn.cursor()
     cursor.execute('SELECT version();')
     db_version = cursor.fetchone()
     print("✅ Connected successfully!")
@@ -71,7 +71,8 @@ except Exception as e:
     print(f"Error: {str(e)}")
     
 finally:
-    if 'connection' in locals():
-        cursor.close()
-        connection.close()
+    if 'conn' in locals():
+        if 'cursor' in locals():
+            cursor.close()
+        conn.close()
         print("\nConnection closed.")

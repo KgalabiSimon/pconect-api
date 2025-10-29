@@ -21,19 +21,12 @@ async def register_security_officer(officer_data: SecurityRegister, db: Session 
     if existing:
         raise HTTPException(status_code=400, detail="Badge number already registered")
 
-    # Generate security officer ID
-    last_officer = db.query(SecurityOfficer).order_by(SecurityOfficer.id.desc()).first()
-    if last_officer:
-        last_num = int(last_officer.id.split("-")[1])
-        officer_id = f"SEC-{last_num + 1:03d}"
-    else:
-        officer_id = "SEC-001"
-
+    import uuid
     from app.core.security import get_password_hash
     hashed_pin = get_password_hash(officer_data.pin)
 
     new_officer = SecurityOfficer(
-        id=officer_id,
+        id=str(uuid.uuid4()),
         badge_number=officer_data.badge_number,
         hashed_pin=hashed_pin,
         first_name=officer_data.first_name,
@@ -67,19 +60,12 @@ async def register_admin(admin_data: AdminCreate, db: Session = Depends(get_db))
             detail="Email already registered as admin"
         )
 
-    # Generate admin ID
-    last_admin = db.query(AdminUser).order_by(AdminUser.id.desc()).first()
-    if last_admin:
-        last_num = int(last_admin.id.split("-")[1])
-        admin_id = generate_id("ADM", last_num + 1)
-    else:
-        admin_id = generate_id("ADM", 1)
-
+    import uuid
     # Create new admin
     hashed_password = get_password_hash(admin_data.password)
 
     new_admin = AdminUser(
-        id=admin_id,
+        id=str(uuid.uuid4()),
         email=admin_data.email,
         hashed_password=hashed_password,
         first_name=admin_data.first_name,
@@ -93,7 +79,8 @@ async def register_admin(admin_data: AdminCreate, db: Session = Depends(get_db))
     db.refresh(new_admin)
 
     # Return as UserResponse for consistency (id, email, etc.)
-    return new_admin
+    from app.schemas.users import UserResponse
+    return UserResponse.from_orm(new_admin)
 from app.core.security import (
     verify_password,
     get_password_hash,
@@ -192,26 +179,28 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
             detail="Email already registered"
         )
 
-    # Generate user ID
+    import uuid
+    # Generate custom user code (optional, if you want to keep USR-001 style)
     last_user = db.query(User).order_by(User.id.desc()).first()
-    if last_user:
-        last_num = int(last_user.id.split("-")[1])
-        user_id = generate_id("USR", last_num + 1)
+    if last_user and hasattr(last_user, 'user_code') and last_user.user_code:
+        last_num = int(last_user.user_code.split("-")[1])
+        user_code = generate_id("USR", last_num + 1)
     else:
-        user_id = generate_id("USR", 1)
+        user_code = generate_id("USR", 1)
 
     # Create new user
     hashed_password = get_password_hash(user_data.password)
 
     new_user = User(
-        id=user_id,
+        id=str(uuid.uuid4()),
+  # You must add this column to your model/migration
         email=user_data.email,
         hashed_password=hashed_password,
         first_name=user_data.first_name,
         last_name=user_data.last_name,
         phone=user_data.phone,
         building_id=user_data.building_id,
-        programme=user_data.programme,
+        programme_id=user_data.programme_id,
         laptop_model=user_data.laptop_model,
         laptop_asset_number=user_data.laptop_asset_number,
         photo_url=user_data.photo_url
@@ -221,7 +210,8 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
-    return new_user
+    from app.schemas.users import UserResponse
+    return UserResponse.from_orm(new_user)
 
 
 @router.post("/login", response_model=Token)
@@ -247,22 +237,15 @@ async def login_user(user_data: UserLogin, db: Session = Depends(get_db)):
     # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.id, "email": user.email, "role": "user"},
+        data={"sub": str(user.id), "email": user.email, "role": "user"},
         expires_delta=access_token_expires
     )
 
+    from app.schemas.users import UserResponse
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": {
-            "id": user.id,
-            "email": user.email,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-            "building_id": user.building_id,
-            "programme": user.programme,
-            "photo_url": user.photo_url
-        }
+        "user": UserResponse.from_orm(user).model_dump()
     }
 
 
@@ -286,19 +269,13 @@ async def login_admin(admin_data: AdminLogin, db: Session = Depends(get_db)):
 
     # Create access token
     access_token = create_access_token(
-        data={"sub": admin.id, "email": admin.email, "role": admin.role}
+        data={"sub": str(admin.id), "email": admin.email, "role": admin.role}
     )
 
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": {
-            "id": admin.id,
-            "email": admin.email,
-            "first_name": admin.first_name,
-            "last_name": admin.last_name,
-            "role": admin.role
-        }
+        "user": UserResponse.from_orm(admin).model_dump()
     }
 
 
@@ -324,7 +301,7 @@ async def login_security(security_data: SecurityLogin, db: Session = Depends(get
 
     # Create access token
     access_token = create_access_token(
-        data={"sub": officer.id, "badge": officer.badge_number, "role": "security"}
+        data={"sub": str(officer.id), "badge": officer.badge_number, "role": "security"}
     )
 
     return {
@@ -356,6 +333,7 @@ async def request_password_reset(
     # For now, just return success message
 
     return {"message": "Password reset link has been sent to your email"}
+
 
 
 @router.get("/me", response_model=UserResponse)
