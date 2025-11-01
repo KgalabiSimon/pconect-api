@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 from app.db.database import get_db
 from app.db.models import User, CheckIn
+from app.db.models import User, CheckIn, CheckInStatus
 from app.utils.qr import generate_qr_base64
 from datetime import datetime, timedelta
 from app.api.routes.auth import get_current_user
@@ -26,7 +27,7 @@ async def check_in_user(
     checkin = CheckIn(
         user_id=user.id,
         check_in_time=datetime.utcnow(),
-        status="checked_in",
+        status=CheckInStatus.PENDING,
         expires_at=datetime.utcnow() + timedelta(days=1)
     )
     db.add(checkin)

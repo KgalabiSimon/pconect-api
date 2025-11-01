@@ -7,6 +7,8 @@ from datetime import datetime
 import enum
 from app.db.database import Base
 from sqlalchemy import UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
 
 
 # Enums
@@ -111,8 +113,7 @@ class Visitor(Base):
 
 
 # New Building model
-from sqlalchemy.dialects.postgresql import UUID
-import uuid
+
 
 class Building(Base):
     __tablename__ = "buildings"
@@ -241,7 +242,7 @@ class CheckIn(Base):
     # Can be either user or visitor
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     visitor_id = Column(UUID(as_uuid=True), ForeignKey("visitors.id", ondelete="SET NULL"), nullable=True)
-    user_type = Column(SQLEnum(UserType), nullable=False)
+    user_type = Column(SQLEnum(UserType), nullable=True)
 
     # Location
     building_id = Column(UUID(as_uuid=True), ForeignKey("buildings.id", ondelete="SET NULL"), nullable=True)

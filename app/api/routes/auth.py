@@ -152,6 +152,32 @@ async def get_current_admin(
     return admin
 
 
+async def get_current_officer(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+) -> SecurityOfficer:
+    """Get current authenticated security officer from JWT token"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    payload = decode_access_token(token)
+    if payload is None or payload.get("role") != "security":
+        raise credentials_exception
+
+    officer_id: str = payload.get("sub")
+    if officer_id is None:
+        raise credentials_exception
+
+    officer = db.query(SecurityOfficer).filter(SecurityOfficer.id == officer_id).first()
+    if officer is None:
+        raise credentials_exception
+
+    return officer
+
+
 async def get_token_payload(token: str = Depends(oauth2_scheme)) -> dict:
     """Get token payload without database query"""
     credentials_exception = HTTPException(
