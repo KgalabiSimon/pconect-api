@@ -4,7 +4,7 @@ from app.core.config import settings
 from app.api.routes import auth, users, profile
 from app.api.routes import building, programme, verify_qr
 from app.api.routes import auth, users, profile, building, checkin,spaces
-from app.api.routes import amenity
+from app.api.routes import amenity, booking
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 
@@ -63,6 +63,12 @@ app.include_router(
 app.include_router(
     amenity.router,
     tags=["Amenities"]
+)
+
+# Register booking router
+app.include_router(
+    booking.router,
+    tags=["Booking"]
 )
 
 # Configure CORS

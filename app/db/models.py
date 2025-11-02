@@ -27,6 +27,7 @@ class SpaceType(str, enum.Enum):
 
 
 class BookingStatus(str, enum.Enum):
+    PENDING = "pending"
     CONFIRMED = "confirmed"
     CANCELLED = "cancelled"
     COMPLETED = "completed"

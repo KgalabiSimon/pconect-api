@@ -37,4 +37,17 @@ async def verify_qr_code(request: VerifyQRRequest, db: Session = Depends(get_db)
     checkin.checked_out_by_officer = str(officer_id)
     db.commit()
     db.refresh(checkin)
-    return {"message": "QR code is valid and user is now checked in", "user_id": str(checkin.user_id), "checkin_id": str(checkin.id), "verified_by": str(officer_id)}
+    # Fetch user details
+    user = db.query(User).filter(User.id == checkin.user_id).first() if checkin.user_id else None
+    return {
+        "message": "QR code is valid and user is now checked in",
+        "user_id": str(checkin.user_id),
+        "checkin_id": str(checkin.id),
+        "verified_by": str(officer_id),
+        "photo_url": user.photo_url if user else None,
+        "phone": user.phone if user else None,
+        "floor": checkin.floor,
+        "block": checkin.block,
+        "laptop_model": checkin.laptop_model,
+        "laptop_asset_number": checkin.laptop_asset_number
+    }
