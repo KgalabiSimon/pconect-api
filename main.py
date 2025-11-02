@@ -4,6 +4,7 @@ from app.core.config import settings
 from app.api.routes import auth, users, profile
 from app.api.routes import building, programme, verify_qr
 from app.api.routes import auth, users, profile, building, checkin,spaces
+from app.api.routes import amenity
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 
@@ -52,11 +53,16 @@ app.include_router(
     tags=["QR Verification"]
 )
 
-
 # Register spaces router
 app.include_router(
     spaces.router,
     tags=["Spaces"]
+)
+
+# Register amenities router
+app.include_router(
+    amenity.router,
+    tags=["Amenities"]
 )
 
 # Configure CORS

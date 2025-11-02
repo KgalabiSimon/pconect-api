@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 from datetime import datetime, timezone
 from app.db.database import get_db
-from app.db.models import CheckIn, User, SecurityOfficer
+from app.db.models import CheckIn, User, SecurityOfficer, CheckInStatus
 from pydantic import BaseModel
 from app.api.routes.auth import get_current_user, get_current_officer
 
@@ -30,10 +30,10 @@ async def verify_qr_code(request: VerifyQRRequest, db: Session = Depends(get_db)
             expires_at = expires_at.replace(tzinfo=timezone.utc)
         if now > expires_at:
             raise HTTPException(status_code=400, detail="QR code has expired")
-    if checkin.status != "pending":
+    if checkin.status not in [CheckInStatus.PENDING, CheckInStatus.CHECKED_OUT]:
         raise HTTPException(status_code=400, detail="Check-in is not pending or already processed")
     # Mark as checked in and track officer
-    checkin.status = "checked_in"
+    checkin.status = CheckInStatus.CHECKED_IN
     checkin.checked_out_by_officer = str(officer_id)
     db.commit()
     db.refresh(checkin)
