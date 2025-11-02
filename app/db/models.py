@@ -1,3 +1,4 @@
+from sqlalchemy import Table
 from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, Text, Float, Enum as SQLEnum, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import Time, CheckConstraint
@@ -200,7 +201,24 @@ class Space(Base):
 
     # Relationships
     building = relationship("Building", back_populates="spaces")
+    amenities = relationship("Amenity", secondary="space_amenities", back_populates="spaces")
 
+
+# Amenity model
+class Amenity(Base):
+    __tablename__ = "amenities"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), unique=True, nullable=False)
+    icon = Column(String(200))  # Optional: URL or icon name
+    spaces = relationship("Space", secondary="space_amenities", back_populates="amenities")
+
+# Association table for many-to-many relationship
+space_amenities = Table(
+    "space_amenities",
+    Base.metadata,
+    Column("space_id", UUID(as_uuid=True), ForeignKey("spaces.id", ondelete="CASCADE")),
+    Column("amenity_id", UUID(as_uuid=True), ForeignKey("amenities.id", ondelete="CASCADE"))
+)
 
 class Booking(Base):
     """Booking model"""

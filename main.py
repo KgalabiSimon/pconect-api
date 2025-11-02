@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.routes import auth, users, profile
 from app.api.routes import building, programme, verify_qr
-from app.api.routes import auth, users, profile, building, checkin
+from app.api.routes import auth, users, profile, building, checkin,spaces
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 
@@ -50,6 +50,13 @@ app.include_router(
 app.include_router(
     verify_qr.router,
     tags=["QR Verification"]
+)
+
+
+# Register spaces router
+app.include_router(
+    spaces.router,
+    tags=["Spaces"]
 )
 
 # Configure CORS
