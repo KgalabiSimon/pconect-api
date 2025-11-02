@@ -15,16 +15,23 @@ router = APIRouter(prefix="/api/v1/checkin")
 class CheckoutRequest(BaseModel):
     checkin_id: UUID
 
+class CheckInCreate(BaseModel):
+    user_id: UUID
+    floor: str
+    block: str
+    laptop_model: str
+    laptop_asset_number: str
+
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def check_in_user(
-    user_id: UUID,
+    data: CheckInCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Check in a user and return a QR code for security verification.
     """
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == data.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -42,7 +49,11 @@ async def check_in_user(
 
     # Create a check-in record (assum, es CheckIn model exists)
     checkin = CheckIn(
-        user_id=user.id,
+        user_id=data.user_id,
+        floor=data.floor,
+        block=data.block,
+        laptop_model=data.laptop_model,
+        laptop_asset_number=data.laptop_asset_number,
         check_in_time=datetime.utcnow(),
         status=CheckInStatus.PENDING,
         expires_at=datetime.utcnow() + timedelta(days=1)
