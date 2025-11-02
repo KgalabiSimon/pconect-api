@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from uuid import UUID
@@ -7,11 +8,35 @@ from app.db.models import CheckIn, User, SecurityOfficer, CheckInStatus
 from pydantic import BaseModel
 from app.api.routes.auth import get_current_user, get_current_officer
 
+
 router = APIRouter(prefix="/api/v1/verify-qr")
 
 class VerifyQRRequest(BaseModel):
     checkin_id: UUID
     officer_id: UUID
+
+
+
+@router.get("/status/{checkin_id}", status_code=200)
+async def get_checkin_status(checkin_id: UUID, db: Session = Depends(get_db)):
+    """
+    Get the status of a check-in by checkin_id. Accessible to users and security.
+    """
+    checkin = db.query(CheckIn).filter(CheckIn.id == checkin_id).first()
+    if not checkin:
+        raise HTTPException(status_code=404, detail="Check-in record not found")
+    return {
+        "checkin_id": str(checkin.id),
+        "status": checkin.status.value,
+        "user_id": str(checkin.user_id) if checkin.user_id else None,
+        "floor": checkin.floor,
+        "block": checkin.block,
+        "laptop_model": checkin.laptop_model,
+        "laptop_asset_number": checkin.laptop_asset_number,
+        "expires_at": checkin.expires_at
+    }
+
+
 
 @router.post("/")
 async def verify_qr_code(request: VerifyQRRequest, db: Session = Depends(get_db), current_officer: SecurityOfficer = Depends(get_current_officer)):
@@ -37,17 +62,4 @@ async def verify_qr_code(request: VerifyQRRequest, db: Session = Depends(get_db)
     checkin.checked_out_by_officer = str(officer_id)
     db.commit()
     db.refresh(checkin)
-    # Fetch user details
-    user = db.query(User).filter(User.id == checkin.user_id).first() if checkin.user_id else None
-    return {
-        "message": "QR code is valid and user is now checked in",
-        "user_id": str(checkin.user_id),
-        "checkin_id": str(checkin.id),
-        "verified_by": str(officer_id),
-        "photo_url": user.photo_url if user else None,
-        "phone": user.phone if user else None,
-        "floor": checkin.floor,
-        "block": checkin.block,
-        "laptop_model": checkin.laptop_model,
-        "laptop_asset_number": checkin.laptop_asset_number
-    }
+    return {"message": "QR code is valid and user is now checked in", "user_id": str(checkin.user_id), "checkin_id": str(checkin.id), "verified_by": str(officer_id)}
