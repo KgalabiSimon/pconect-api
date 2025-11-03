@@ -1,4 +1,6 @@
-from sqlalchemy import Table
+# BookingCheckIn join table
+from sqlalchemy import ForeignKey
+
 from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, Text, Float, Enum as SQLEnum, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import Time, CheckConstraint
@@ -10,6 +12,7 @@ from app.db.database import Base
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
+from sqlalchemy import Table
 
 
 # Enums
@@ -40,6 +43,11 @@ class CheckInStatus(str, enum.Enum):
 
 
 # Models
+class BookingCheckIn(Base):
+    __tablename__ = "booking_checkins"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    booking_id = Column(UUID(as_uuid=True), ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False)
+    checkin_id = Column(UUID(as_uuid=True), ForeignKey("checkins.id", ondelete="CASCADE"), nullable=False)
 
 # New Programme model
 class Programme(Base):

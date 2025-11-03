@@ -1,3 +1,5 @@
+
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from uuid import UUID
@@ -21,6 +23,43 @@ class CheckInCreate(BaseModel):
     block: str
     laptop_model: str
     laptop_asset_number: str
+    booking_id: UUID = None
+
+
+
+@router.get("/my-checkins", status_code=200)
+async def get_my_checkins(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get all general check-ins and booking-linked check-ins for the current user.
+    """
+    # General check-ins
+    general_checkins = db.query(CheckIn).filter(CheckIn.user_id == current_user.id).all()
+
+    # Booking-linked check-ins
+    from app.db.models import BookingCheckIn, Booking
+    booking_checkins = db.query(BookingCheckIn).join(CheckIn, BookingCheckIn.checkin_id == CheckIn.id)
+    booking_checkins = booking_checkins.filter(CheckIn.user_id == current_user.id).all()
+
+    # For each booking_checkin, get booking details
+    booking_checkin_details = []
+    for bc in booking_checkins:
+        booking = db.query(Booking).filter(Booking.id == bc.booking_id).first()
+        checkin = db.query(CheckIn).filter(CheckIn.id == bc.checkin_id).first()
+        booking_checkin_details.append({
+            "booking_id": str(bc.booking_id),
+            "checkin_id": str(bc.checkin_id),
+            "booking": booking,
+            "checkin": checkin
+        })
+
+    return {
+        "general_checkins": general_checkins,
+        "booking_checkins": booking_checkin_details
+    }
+
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def check_in_user(
@@ -47,7 +86,7 @@ async def check_in_user(
     if last_checkin and last_checkin.status not in [CheckInStatus.PENDING, CheckInStatus.CHECKED_OUT]:
         raise HTTPException(status_code=400, detail="Check-in is not pending or already processed")
 
-    # Create a check-in record (assum, es CheckIn model exists)
+    # Create a check-in record (assumes CheckIn model exists)
     checkin = CheckIn(
         user_id=data.user_id,
         floor=data.floor,
@@ -62,6 +101,16 @@ async def check_in_user(
     db.commit()
     db.refresh(checkin)
 
+    # If booking_id is provided, create a BookingCheckIn record
+    if data.booking_id:
+        from app.db.models import BookingCheckIn
+        booking_checkin = BookingCheckIn(
+            booking_id=data.booking_id,
+            checkin_id=checkin.id
+        )
+        db.add(booking_checkin)
+        db.commit()
+
     # Generate QR code with check-in ID (or token)
     qr_data = str(checkin.id)
     qr_code_base64 = generate_qr_base64(qr_data)
@@ -69,7 +118,8 @@ async def check_in_user(
     return {
         "message": "Check-in successful. Present this QR code to security.",
         "qr_code_base64": qr_code_base64,
-        "checkin_id": str(checkin.id)
+        "checkin_id": str(checkin.id),
+        "booking_id": str(data.booking_id) if data.booking_id else None
     }
 
 @router.post("/checkout", status_code=status.HTTP_200_OK)
