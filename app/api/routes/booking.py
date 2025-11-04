@@ -1,3 +1,4 @@
+
 from app.api.routes.auth import get_current_admin
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -148,3 +149,37 @@ async def create_booking(
         "message": "Booking successful.",
         "booking_id": str(booking.id)
     }
+
+
+@router.get("/availability", status_code=200)
+async def check_space_availability(
+    building_id: UUID,
+    space_type: SpaceType,
+    booking_date: datetime,
+    start_time: time,
+    end_time: time,
+    db: Session = Depends(get_db)
+):
+    """
+    Check if a space of the given type is available in the building for the specified date and time range.
+    """
+    # Find the space
+    space = db.query(Space).filter(
+        Space.building_id == building_id,
+        Space.type == space_type
+    ).first()
+    if not space:
+        return {"available": False, "reason": f"No {space_type.value} found in building."}
+
+    # Check for overlapping bookings
+    overlapping = db.query(Booking).filter(
+        Booking.space_id == space.id,
+        Booking.booking_date == booking_date,
+        Booking.start_time < end_time,
+        Booking.end_time > start_time,
+        Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.PENDING])
+    ).first()
+    if overlapping:
+        return {"available": False, "reason": "Space is already booked for the selected time."}
+
+    return {"available": True, "space_id": str(space.id)}
