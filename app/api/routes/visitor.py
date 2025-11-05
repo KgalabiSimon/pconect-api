@@ -1,3 +1,4 @@
+from fastapi import Query
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
@@ -7,6 +8,69 @@ from app.schemas.visitor import VisitorCreate, VisitorResponse, VisitorCheckIn, 
 from app.api.routes.auth import get_current_admin, get_current_officer, get_token_payload
 
 router = APIRouter(prefix="/api/v1/visitors", tags=["Visitors"])
+
+@router.get("/all", response_model=List[VisitorResponse])
+async def get_all_visitors(db: Session = Depends(get_db)):
+    """Fetch all visitations (all visitors)"""
+    visitors = db.query(Visitor).order_by(Visitor.registered_at.desc()).all()
+    return [
+        VisitorResponse(
+            id=str(v.id),
+            first_name=v.first_name,
+            last_name=v.last_name,
+            company=v.company,
+            mobile=v.mobile,
+            email=v.email,
+            photo_url=v.photo_url,
+            purpose=v.purpose,
+            host_employee_id=str(v.host_employee_id) if v.host_employee_id else None,
+            host_employee_name=v.host_employee_name,
+            other_reason=v.other_reason,
+            building_id=str(v.building_id) if v.building_id else None,
+            floor=v.floor,
+            block=v.block,
+            registered_at=str(v.registered_at) if v.registered_at else None
+        ) for v in visitors
+    ]
+
+@router.get("/filter", response_model=List[VisitorResponse])
+async def filter_visitors(
+    name: str = Query(None, description="Search by first or last name"),
+    mobile: str = Query(None, description="Search by mobile number"),
+    purpose: str = Query(None, description="Search by purpose"),
+    db: Session = Depends(get_db)
+):
+    """Filter visitors by name, mobile, or purpose"""
+    query = db.query(Visitor)
+    if name:
+        query = query.filter((Visitor.first_name.ilike(f"%{name}%")) | (Visitor.last_name.ilike(f"%{name}%")))
+    if mobile:
+        query = query.filter(Visitor.mobile.ilike(f"%{mobile}%"))
+    if purpose:
+        query = query.filter(Visitor.purpose.ilike(f"%{purpose}%"))
+    visitors = query.order_by(Visitor.registered_at.desc()).all()
+    return [
+        VisitorResponse(
+            id=str(v.id),
+            first_name=v.first_name,
+            last_name=v.last_name,
+            company=v.company,
+            mobile=v.mobile,
+            email=v.email,
+            photo_url=v.photo_url,
+            purpose=v.purpose,
+            host_employee_id=str(v.host_employee_id) if v.host_employee_id else None,
+            host_employee_name=v.host_employee_name,
+            other_reason=v.other_reason,
+            building_id=str(v.building_id) if v.building_id else None,
+            floor=v.floor,
+            block=v.block,
+            registered_at=str(v.registered_at) if v.registered_at else None
+        ) for v in visitors
+    ]
+
+
+
 
 @router.post("/register", response_model=VisitorResponse, status_code=status.HTTP_201_CREATED)
 async def register_visitor(visitor_data: VisitorCreate, db: Session = Depends(get_db)):
@@ -72,5 +136,23 @@ async def get_visitor_logs(db: Session = Depends(get_db), admin: User = Depends(
 @router.get("/{visitor_id}", response_model=VisitorResponse)
 async def get_visitor(visitor_id: str, db: Session = Depends(get_db)):
     """Get visitor details"""
-    # TODO: Implement visitor detail retrieval
-    pass
+    visitor = db.query(Visitor).filter(Visitor.id == visitor_id).first()
+    if not visitor:
+        raise HTTPException(status_code=404, detail="Visitor not found")
+    return VisitorResponse(
+        id=str(visitor.id),
+        first_name=visitor.first_name,
+        last_name=visitor.last_name,
+        company=visitor.company,
+        mobile=visitor.mobile,
+        email=visitor.email,
+        photo_url=visitor.photo_url,
+        purpose=visitor.purpose,
+        host_employee_id=str(visitor.host_employee_id) if visitor.host_employee_id else None,
+        host_employee_name=visitor.host_employee_name,
+        other_reason=visitor.other_reason,
+        building_id=str(visitor.building_id) if visitor.building_id else None,
+        floor=visitor.floor,
+        block=visitor.block,
+        registered_at=str(visitor.registered_at) if visitor.registered_at else None
+    )
