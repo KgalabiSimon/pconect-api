@@ -79,7 +79,7 @@ async def update_booking(
     return booking
 
 
-@router.get("/admin", response_model=list[BookingOut])
+@router.get("/admin", response_model=list[BookingOut],response_model_exclude_none=True)
 async def admin_list_bookings(
     user_id: UUID = None,
     building_id: UUID = None,

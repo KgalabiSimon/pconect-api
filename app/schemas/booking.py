@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from uuid import UUID
+from typing import Optional
 from datetime import datetime, time
 from app.db.models import SpaceType, CheckInStatus
 
@@ -20,7 +21,7 @@ class BookingOut(BaseModel):
     start_time: time
     end_time: time
     status: CheckInStatus
-    qr_code_url: str = None
+    qr_code_url: Optional[str] = None
 
     class Config:
         orm_mode = True

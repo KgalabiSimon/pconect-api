@@ -2,6 +2,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import uuid
 
 from app.db.database import get_db
 from app.db.models import User
@@ -61,19 +62,19 @@ async def create_user(
             detail="Email already registered"
         )
 
-    # Generate user ID
-    last_user = db.query(User).order_by(User.id.desc()).first()
-    if last_user:
-        last_num = int(last_user.id.split("-")[1])
-        user_id = generate_id("USR", last_num + 1)
-    else:
-        user_id = generate_id("USR", 1)
+    # # Generate user ID
+    # last_user = db.query(User).order_by(User.id.desc()).first()
+    # if last_user:
+    #     last_num = int(last_user.id.split("-")[1])
+    #     user_id = generate_id("USR", last_num + 1)
+    # else:
+    #     user_id = generate_id("USR", 1)
 
     # Create new user
     hashed_password = get_password_hash(user_data.password)
 
     new_user = User(
-        id=user_id,
+        id=str(uuid.uuid4()),
         email=user_data.email,
         hashed_password=hashed_password,
         first_name=user_data.first_name,
