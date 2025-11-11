@@ -203,6 +203,27 @@ async def delete_user(
     return {"message": "User deleted successfully"}
 
 
+@router.delete("/")
+async def delete_user_by_query(
+    user_id: str = Query(..., description="User id to delete"),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    """DELETE /api/v1/users/?user_id=... - Convenience wrapper to accept query param for delete."""
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    user.is_active = False
+    db.commit()
+
+    return {"message": "User deleted successfully"}
+
+
 @router.get("/stats/count")
 async def get_user_count(
     building_id: Optional[str] = None,

@@ -157,8 +157,12 @@ async def filter_checkins(
     start_date: datetime = None,
     end_date: datetime = None,
     db: Session = Depends(get_db),
-    current_admin=Depends(get_current_admin)
+    current_admin: User = Depends(get_current_admin),
+    current_officer: SecurityOfficer = Depends(get_current_officer)
 ):
+    # Allow access if user is admin or security officer
+    if not (current_admin or current_officer):
+        raise HTTPException(status_code=403, detail="Not authorized")
     query = db.query(CheckIn)
     if user_id:
         query = query.filter(CheckIn.user_id == user_id)
