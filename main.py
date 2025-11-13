@@ -83,10 +83,16 @@ app.include_router(
     tags=["Visitors"]
 )
 
-# Configure CORS
+
+# Add Azure production origin
+origins = [
+    "https://pconect-btcncphbhde9afa3.southafricanorth-01.azurewebsites.net",
+]
+origins.extend(settings.cors_origins_list)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
