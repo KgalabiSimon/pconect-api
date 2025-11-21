@@ -87,6 +87,9 @@ app.include_router(
 # Add Azure production origin
 origins = [
     "https://pconect-btcncphbhde9afa3.southafricanorth-01.azurewebsites.net",
+    "http://192.168.8.1:8081",
+
+
 ]
 origins.extend(settings.cors_origins_list)
 
